@@ -1,0 +1,141 @@
+07-JULY-2019 Matthew J. Wolf Email: matthew.wolf at speciosus.net
+
+A Linux kernel IIO i2c driver module for the Amphenol Advanced Sensors /
+Telaire 14 bit ChipCap 2 humidity and temperature sensors.
+
+This driver only works correctly with the ChipCap 2 devices that do not enter
+sleep mode after power-on reset (POR). This driver does not have any
+support for the ChipCap 2 Command Mode. This driver does not configure the
+device's alarm or analog options.
+
+The only thing this driver does id transmit to a ChipCap 2 is the Data Fetch
+command 0xDF. The driver then receives and formats the responses to the
+Data Fetch command.
+
+This driver does not enable any IIO buffers or triggers.
+
+The driver was developed with a ChipCap2 device with the part number
+of CC2D23-SIP.
+
+The part numbers of devices that this driver should support:
+  CC2D23 ChipCap 2, digital, 2%, 3.3v
+  CC2D25 ChipCap 2, digital, 2%, 5v
+  CC2D33 ChipCap 2, digital, 3%, 3.3v
+  CC2D35 ChipCap 2, digital, 3%, 5v
+  Sources for the part numbers:
+    [1] Amphenol Thermometrics, App. Guide, AAS-916-127 Rev. J, pp 39.
+    [2] Amphenol Advanced Sensors, "ChipCap 2 humidity and temperature sensor,"
+        Datasheet AAS-920-558E, Feb. 2015.
+
+Change Log
+----------
+
+Version 1.0.0:
+  - Initial Version
+
+
+
+Kernel Headers Are Required
+---------------------------
+
+The kernel headers are needed for the Linux kernel version that will use
+the module.
+
+The make file assumes that the Linux kernel headers are located in the
+Debian distribution location, /usr/src/linux-headers-$(KVER).
+The make file uses `uname -r | cut -f1-3 -d.` to discover the version
+of the currently running kernel.
+  
+Build the Module
+----------------
+
+1. Install everything that is needed for a kernel build module environment.
+2. Run GNU make.
+
+make
+
+Install the Module
+------------------
+
+1. Copy the compiled module, chipcap2.ko, into the Linux kernel's module
+   library, /lib/modules/<KERNEL VERSION>.
+
+   Note: The correct location to copy the module to can be dependent on the 
+   Linux distribution. I have found that placing the module into
+   "/lib/modules/<KERNEL VERSION>/updates/drivers/iio" works correctly
+   with most Linux distributions. 
+
+   Example copying of the module:
+
+   sudo mkdir -p /lib/modules/<KERNEL VERSION>/updates/drivers/iio
+   sudo cp ./chipcap2.ko /lib/modules/<KERNEL VERSION>/updates/drivers/iio/
+
+2. Update Linux kernel module dependencies. Run depmod.
+
+   sudo depmod 
+
+Manually Load the Kernel Module
+-------------------------------
+
+The kernel module can be manually loaded with the command listed below.
+
+   sudo modprobe chipcap2
+
+
+Have the Kernel Module Loaded at System Boot
+--------------------------------------------
+
+The loading of the kernel module at boot is Linux distribution dependent.
+
+Some Linux distributions use the the contents of the /etc/modules file to
+list modules that should be loaded at boot. Adding a line containing the
+name of the the module, chipcap2, should cause the module to be loaded when
+the system boots. 
+ 
+Tell the Linux Kernel to Instantiate the I2C Sensor
+---------------------------------------------------
+
+1. The I2C sensor needs to be instantiated. Run the shell command below to
+    instantiate the sensor.
+     
+   -- When User is Root:
+   echo SENSOR-ID-STRING I2C-ADDRESS > /sys/bus/i2c/devices/i2c-BUS/new_device
+
+   -- When User Can Use "sudo":
+   sudo sh -c 'echo SENSOR-ID-STRING I2C-ADDRESS > /sys/bus/i2c/devices/i2c-BUS/new_device'
+   
+   Example:
+   SENSOR-ID-STRING = cc2d23 
+                          Note: The name strings is the "device_id" listed in
+                                the module source. 
+   I2C-ADDRESS        = 0x28  
+   BUS                = 1  
+                          Note: The number of the system I2C bus.
+
+   sudo echo cc2d23 0x28 > /sys/bus/i2c/devices/i2c-1/new_device
+
+   Note: You can validate that the kernel module is bound to the I2C sensor
+         by using the "i2cdetect" utility. When the module is not bound to
+         the sensor the utility displays the address of the sensor. The
+         utility replaces the address with "UU" when the module is being used.
+
+2. Add system configuration to instantiate the sensor at system boot.
+
+   The instantiation of the sensor at boot is Linux distribution dependent.
+  
+   Some distributions allow the use of an /etc/rc.local file.
+   Placing the shell sensor instantiation command in to /etc/rc.local
+   is one method to instantiate the sensor at boot. 
+
+   Link to the Linux kernel documentation on how to instantiate I2C devices:
+   https://www.kernel.org/doc/Documentation/i2c/instantiating-devices
+
+Validate Functioning of the Module by Viewing the Industrial I/O (IIO) Data
+---------------------------------------------------------------------------
+
+The "iio_info" utility can be used to validate that the kernel module is
+functioning correctly. The utility will display the raw values of the IIO 
+channels provided by the module.
+
+ 
+
